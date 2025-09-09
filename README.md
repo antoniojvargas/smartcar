@@ -23,8 +23,8 @@ The project follows clean architecture principles with controllers, services, an
 Clone the repository and install dependencies:
 
 ```bash
-git clone https://github.com/your-username/smartcar-api.git
-cd smartcar-api
+git clone https://github.com/antoniojvargas/smartcar.git
+cd smartcar
 npm install
 ```
 

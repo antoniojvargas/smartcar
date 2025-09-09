@@ -1,0 +1,169 @@
+openapi: 3.0.0
+info:
+  title: "Smartcar API"
+  version: "1.0.0"
+servers:
+  - url: "http://localhost:3000/vehicles"
+    description: "Local development server"
+
+paths:
+  /{id}:
+    get:
+      summary: "Get vehicle information"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Vehicle ID
+      responses:
+        "200":
+          description: Vehicle info in Smartcar format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  vin:
+                    type: string
+                    example: "1213231"
+                  color:
+                    type: string
+                    example: "Metallic Silver"
+                  doorCount:
+                    type: integer
+                    example: 4
+                  driveTrain:
+                    type: string
+                    example: "v8"
+        "502":
+          description: MM API error
+        "500":
+          description: Internal server error
+
+  /{id}/doors:
+    get:
+      summary: "Get vehicle door lock status"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Vehicle ID
+      responses:
+        "200":
+          description: Door status list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    location:
+                      type: string
+                      example: "frontLeft"
+                    locked:
+                      type: boolean
+                      example: true
+        "502":
+          description: MM API error
+        "500":
+          description: Internal server error
+
+  /{id}/fuel:
+    get:
+      summary: "Get fuel level percentage"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Vehicle ID
+      responses:
+        "200":
+          description: Fuel percentage
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  percent:
+                    type: number
+                    format: float
+                    example: 30.2
+        "502":
+          description: MM API error
+        "500":
+          description: Internal server error
+
+  /{id}/battery:
+    get:
+      summary: "Get battery level percentage"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Vehicle ID
+      responses:
+        "200":
+          description: Battery percentage
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  percent:
+                    type: number
+                    format: float
+                    example: 50.3
+        "502":
+          description: MM API error
+        "500":
+          description: Internal server error
+
+  /{id}/engine:
+    post:
+      summary: "Start or stop vehicle engine"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: Vehicle ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [START, STOP]
+                  example: START
+      responses:
+        "200":
+          description: Engine command response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [success, error]
+                    example: success
+        "400":
+          description: Invalid action provided
+        "502":
+          description: MM API error
+        "500":
+          description: Internal server error
+

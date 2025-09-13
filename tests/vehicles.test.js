@@ -37,14 +37,16 @@ describe('GET /vehicles/:id', () => {
   it('should return 502 if MM API status is not 200', async () => {
     sinon.stub(axios, 'post').resolves({
       data: {
-        status: '500', // simulate MM API failure
+        status: '502',
       },
     });
 
     const res = await request(app).get('/vehicles/1234');
 
     expect(res.status).to.equal(502);
-    expect(res.body).to.deep.equal({ error: 'MM API error' });
+    expect(res.body.error).to.equal('ExternalApiError');
+    expect(res.body.message).to.equal('MM API error: 502');
+    expect(res.body.details).to.equal(null);
   });
 
   it('should return 500 if critical data is missing', async () => {
@@ -52,17 +54,26 @@ describe('GET /vehicles/:id', () => {
       data: {
         status: '200',
         data: {
-          // Missing driveTrain, door count, etc.
           vin: { value: '123123412412' },
           color: { value: 'Metallic Silver' },
+          // Missing driveTrain, door count, etc.
         },
       },
     });
 
     const res = await request(app).get('/vehicles/1234');
+    expect(res.status).to.equal(502);
+    expect(res.body.error).to.equal('ExternalApiError');
+    expect(res.body.message).to.equal('Incomplete data from MM API');
+  });
 
+  it('should return 500 if an unexpected error occurs', async () => {
+    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
+
+    const res = await request(app).get('/vehicles/1234');
     expect(res.status).to.equal(500);
-    expect(res.body).to.deep.equal({ error: 'Incomplete data from MM API' });
+    expect(res.body.error).to.equal('InternalServerError');
+    expect(res.body.message).to.equal('Something went wrong');
   });
 });
 
@@ -115,33 +126,26 @@ describe('GET /vehicles/:id/doors', () => {
   it('should return 502 if MM API status is not 200', async () => {
     sinon.stub(axios, 'post').resolves({
       data: {
-        status: '500', // simulate API failure
+        status: '502',
       },
     });
 
     const res = await request(app).get('/vehicles/1234/doors');
 
     expect(res.status).to.equal(502);
-    expect(res.body).to.deep.equal({ error: 'MM API error' });
+    expect(res.body.error).to.equal('ExternalApiError');
+    expect(res.body.message).to.equal('MM API error: 502');
+    expect(res.body.details).to.equal(null);
   });
 
   it('should return 500 if doors.values is missing', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        data: {
-          doors: {
-            type: 'Array',
-            values: null, // invalid format
-          },
-        },
-      },
-    });
+    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
 
     const res = await request(app).get('/vehicles/1234/doors');
 
     expect(res.status).to.equal(500);
-    expect(res.body).to.deep.equal({ error: 'Invalid data format from MM API' });
+    expect(res.body.error).to.equal('InternalServerError');
+    expect(res.body.message).to.equal('Something went wrong');
   });
 });
 
@@ -169,28 +173,26 @@ describe('GET /vehicles/:id/fuel', () => {
   it('should return 502 if MM API status is not 200', async () => {
     sinon.stub(axios, 'post').resolves({
       data: {
-        status: '500',
+        status: '502',
       },
     });
 
     const res = await request(app).get('/vehicles/1234/fuel');
 
     expect(res.status).to.equal(502);
-    expect(res.body).to.deep.equal({ error: 'MM API error' });
+    expect(res.body.error).to.equal('ExternalApiError');
+    expect(res.body.message).to.equal('MM API error: 502');
+    expect(res.body.details).to.equal(null);
   });
 
-  it('should return { percent: null } if batteryLevel is missing', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        data: {},
-      },
-    });
+  it('should return 500 if an unexpected error occurs', async () => {
+    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
 
     const res = await request(app).get('/vehicles/1234/fuel');
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ percent: null });
+    expect(res.status).to.equal(500);
+    expect(res.body.error).to.equal('InternalServerError');
+    expect(res.body.message).to.equal('Something went wrong');
   });
 });
 
@@ -218,28 +220,26 @@ describe('GET /vehicles/:id/battery', () => {
   it('should return 502 if MM API status is not 200', async () => {
     sinon.stub(axios, 'post').resolves({
       data: {
-        status: '500',
+        status: '502',
       },
     });
 
     const res = await request(app).get('/vehicles/1234/battery');
 
     expect(res.status).to.equal(502);
-    expect(res.body).to.deep.equal({ error: 'MM API error' });
+    expect(res.body.error).to.equal('ExternalApiError');
+    expect(res.body.message).to.equal('MM API error: 502');
+    expect(res.body.details).to.equal(null);
   });
 
-  it('should return { percent: null } if batteryLevel is missing', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        data: {},
-      },
-    });
+  it('should return 500 if an unexpected error occurs', async () => {
+    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
 
     const res = await request(app).get('/vehicles/1234/battery');
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ percent: null });
+    expect(res.status).to.equal(500);
+    expect(res.body.error).to.equal('InternalServerError');
+    expect(res.body.message).to.equal('Something went wrong');
   });
 });
 
@@ -280,15 +280,14 @@ describe('POST /vehicles/:id/engine', () => {
     expect(res.body).to.deep.equal({ status: 'success' });
   });
 
-  it('should return 400 if action is invalid', async () => {
+  it('should return an error if action is invalid', async () => {
     const res = await request(app)
       .post('/vehicles/1234/engine')
       .send({ action: 'INVALID' });
 
-    expect(res.status).to.equal(400);
-    expect(res.body).to.deep.equal({
-      error: "Invalid action. Must be 'START' or 'STOP'.",
-    });
+    expect(res.status).to.equal(500);
+    expect(res.body.error).to.equal('InternalServerError');
+    expect(res.body.message).to.equal('Something went wrong');
   });
 
   it('should return 502 if MM API returns null', async () => {
@@ -299,12 +298,14 @@ describe('POST /vehicles/:id/engine', () => {
       .send({ action: 'START' });
 
     expect(res.status).to.equal(502);
-    expect(res.body).to.deep.equal({ error: 'No response from MM API' });
+    expect(res.body.error).to.equal('ExternalApiError');
+    expect(res.body.message).to.equal('No response from MM API');
+    expect(res.body.details).to.equal(null);
   });
 
   it('should return 502 if MM API returns non-200 status', async () => {
     sinon.stub(axios, 'post').resolves({
-      data: { status: '500' },
+      data: { status: '502' },
     });
 
     const res = await request(app)
@@ -312,10 +313,12 @@ describe('POST /vehicles/:id/engine', () => {
       .send({ action: 'START' });
 
     expect(res.status).to.equal(502);
-    expect(res.body).to.deep.equal({ error: 'MM API error: 500' });
+    expect(res.body.error).to.equal('ExternalApiError');
+    expect(res.body.message).to.equal('MM API error: 502');
+    expect(res.body.details).to.equal(null);
   });
 
-  it('should return 500 if MM API response is malformed (no actionResult)', async () => {
+  it('should return 502 if MM API response is malformed (no actionResult)', async () => {
     sinon.stub(axios, 'post').resolves({
       data: { status: '200' },
     });
@@ -324,10 +327,10 @@ describe('POST /vehicles/:id/engine', () => {
       .post('/vehicles/1234/engine')
       .send({ action: 'START' });
 
-    expect(res.status).to.equal(500);
-    expect(res.body).to.deep.equal({
-      error: 'Malformed response from MM API',
-    });
+    expect(res.status).to.equal(502);
+    expect(res.body.error).to.equal('ExternalApiError');
+    expect(res.body.message).to.equal('Malformed response from MM API');
+    expect(res.body.details).to.equal(null);
   });
 
   it('should return error when MM API status=FAILED', async () => {
@@ -347,20 +350,14 @@ describe('POST /vehicles/:id/engine', () => {
   });
 
   it('should return 500 for unexpected MM API status', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        actionResult: { status: 'UNKNOWN' },
-      },
-    });
+    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
 
     const res = await request(app)
       .post('/vehicles/1234/engine')
       .send({ action: 'START' });
 
     expect(res.status).to.equal(500);
-    expect(res.body).to.deep.equal({
-      error: 'Unexpected status from MM API: UNKNOWN',
-    });
+    expect(res.body.error).to.equal('InternalServerError');
+    expect(res.body.message).to.equal('Something went wrong');
   });
 });

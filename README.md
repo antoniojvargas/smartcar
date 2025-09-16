@@ -25,38 +25,29 @@ Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/antoniojvargas/smartcar.git
 cd smartcar
-npm install
 ```
 
-## 🚀 Usage
+## 🐳 Running with Docker
 
-Run the application in development mode with hot reloading (nodemon):
+This project is containerized using Docker Compose.
+No need to install Node.js locally — just run:
 
 ```bash
-npm run dev
+docker-compose up -d --build
 ```
 
-The API will start at:
+This will:
+
+* Build the smartcar image
+
+* Start the container in development mode (nodemon)
+
+* Expose the API on http://localhost:3000
+
+To stop the container:
 
 ```bash
-http://localhost:3000
-```
-
----
-
-## 🏭 Production
-
-Run the application in production mode:
-
-```bash
-npm start
-```
-
-By default, the server runs on port 3000.
-You can override this by setting the PORT environment variable:
-
-```bash
-PORT=4000 npm start
+docker-compose down
 ```
 
 ---
@@ -182,12 +173,13 @@ Response
 
 ---
 
-## 📖 API Documentation (Swagger/OpenAPI)
+## 📖 📖 Interactive API Documentation (Swagger UI)
 
-This project includes an OpenAPI 3.0 spec (openapi.yml).
+You can explore and test all endpoints using the built-in Swagger UI:
 
-- View in Swagger Editor
-- Use a VS Code Extension to view the openapi.yml content
+➡️ http://localhost:3000/api-docs
+
+This interactive documentation is automatically generated from the openapi.yml specification.
 
 ---
 
@@ -195,13 +187,18 @@ This project includes an OpenAPI 3.0 spec (openapi.yml).
 
 ```bash
 src/
-  controllers/       # Route controllers
-  services/          # External MM API service calls
-  utils/logger.js    # Winston logger config
-  app.js             # Express app setup
-  server.js          # Entry point
-tests/               # Mocha/Chai/Sinon unit tests
-openapi.yml          # API specification
+  controllers/        # Route controllers (handle incoming HTTP requests and responses)
+  doc/                # API documentation files (e.g. OpenAPI/Swagger specs, markdown docs)
+  errors/             # Custom error classes (ValidationError, NotFoundError, etc.)
+  middleware/         # Express middleware (validation, sanitization, logging, etc.)
+  providers/          # External API providers (e.g. MM API integration layer)
+  routes/             # Express route definitions (map endpoints to controllers)
+  schemas/            # Joi schemas and validation logic
+  services/           # Business logic and data transformation (calls providers)
+  utils/logger.js     # Winston logger configuration and setup
+  app.js              # Express app setup (middleware, routes, error handling)
+  server.js           # Application entry point (starts the HTTP server)
+tests/                # Unit tests
 ```
 
 ---

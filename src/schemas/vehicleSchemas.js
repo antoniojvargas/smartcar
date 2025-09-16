@@ -88,7 +88,8 @@ export const doorsResponseSchema = Joi.array().items(
  * @type {Joi.ObjectSchema}
  */
 export const fuelResponseSchema = Joi.object({
-  percent: Joi.number().min(0).max(100).required(),
+  percent: Joi.number().min(0).max(100).optional(),
+  message: Joi.string().optional(),
 });
 
 /**
@@ -98,7 +99,8 @@ export const fuelResponseSchema = Joi.object({
  * @type {Joi.ObjectSchema}
  */
 export const batteryResponseSchema = Joi.object({
-  percent: Joi.number().min(0).max(100).required(),
+  percent: Joi.number().min(0).max(100).optional(),
+  message: Joi.string().optional(),
 });
 
 /**

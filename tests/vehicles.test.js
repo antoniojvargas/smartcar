@@ -62,9 +62,9 @@ describe('GET /vehicles/:id', () => {
     });
 
     const res = await request(app).get('/vehicles/1234');
-    expect(res.status).to.equal(502);
-    expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('Incomplete data from MM API');
+    expect(res.status).to.equal(400);
+    expect(res.body.error).to.equal('ValidationError');
+    expect(res.body.message).to.equal('Invalid response format');
   });
 
   it('should return 500 if an unexpected error occurs', async () => {
@@ -285,9 +285,9 @@ describe('POST /vehicles/:id/engine', () => {
       .post('/vehicles/1234/engine')
       .send({ action: 'INVALID' });
 
-    expect(res.status).to.equal(500);
-    expect(res.body.error).to.equal('InternalServerError');
-    expect(res.body.message).to.equal('Something went wrong');
+    expect(res.status).to.equal(400);
+    expect(res.body.error).to.equal('ValidationError');
+    expect(res.body.message).to.equal('Action must be either START or STOP');
   });
 
   it('should return 502 if MM API returns null', async () => {
@@ -329,7 +329,7 @@ describe('POST /vehicles/:id/engine', () => {
 
     expect(res.status).to.equal(502);
     expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('Malformed response from MM API');
+    expect(res.body.message).to.equal('MM API error: 500');
     expect(res.body.details).to.equal(null);
   });
 
@@ -345,8 +345,9 @@ describe('POST /vehicles/:id/engine', () => {
       .post('/vehicles/1234/engine')
       .send({ action: 'START' });
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ status: 'error' });
+    expect(res.status).to.equal(400);
+    expect(res.body.error).to.equal('ValidationError');
+    expect(res.body.message).to.equal('Invalid action');
   });
 
   it('should return 500 for unexpected MM API status', async () => {

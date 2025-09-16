@@ -1,4 +1,3 @@
-import CarApiProvider from './CarApiProvider.js';
 import {
   getVehicleInfo,
   getSecurityStatusService,
@@ -14,7 +13,7 @@ import {
  * @class MMApiProvider
  * @extends CarApiProvider
  */
-export default class MMApiProvider extends CarApiProvider {
+export default class MMApiProvider {
   /**
    * Retrieve basic vehicle information by its ID from the MM API.
    *
@@ -23,7 +22,23 @@ export default class MMApiProvider extends CarApiProvider {
    * @returns {Promise<object>} A promise that resolves with the vehicle information.
    */
   async getVehicleInfo(id) {
-    return await getVehicleInfo(id);
+    const mmResponse = await getVehicleInfo(id);
+    if (!mmResponse) return null;
+    if (mmResponse.status !== '200') return { status: mmResponse.status };
+
+    const data = mmResponse.data || {};
+    const vin = data.vin?.value || null;
+    const color = data.color?.value || null;
+    const driveTrain = data.driveTrain?.value || null;
+
+    let doorCount = null;
+    if (data.fourDoorSedan?.value === 'True') doorCount = 4;
+    else if (data.twoDoorCoupe?.value === 'True') doorCount = 2;
+
+    return {
+      status: '200',
+      data: { vin, color, doorCount, driveTrain },
+    };
   }
 
   /**
@@ -34,7 +49,26 @@ export default class MMApiProvider extends CarApiProvider {
    * @returns {Promise<object>} A promise that resolves with the security status of the vehicle.
    */
   async getSecurityStatus(id) {
-    return await getSecurityStatusService(id);
+    const mmResponse = await getSecurityStatusService(id);
+    if (!mmResponse) return null;
+    if (mmResponse.status !== '200') return { status: mmResponse.status };
+
+    const data = mmResponse.data?.doors?.values;
+    if (!Array.isArray(data)) return { status: '500', data: null };
+
+    const doors = data
+      .map((door) => {
+        const location = door?.location?.value;
+        const lockedStr = door?.locked?.value;
+        if (typeof location !== 'string' || typeof lockedStr !== 'string') return null;
+        return { location, locked: lockedStr === 'True' };
+      })
+      .filter(Boolean);
+
+    return {
+      status: '200',
+      data: doors,
+    };
   }
 
   /**
@@ -45,7 +79,20 @@ export default class MMApiProvider extends CarApiProvider {
    * @returns {Promise<object>} A promise that resolves with the energy status of the vehicle.
    */
   async getEnergy(id) {
-    return await getEnergyService(id);
+    const mmResponse = await getEnergyService(id);
+    if (!mmResponse) return null;
+    if (mmResponse.status !== '200') return { status: mmResponse.status };
+
+    const tankLevel = mmResponse.data?.tankLevel;
+    const batteryLevel = mmResponse.data?.batteryLevel;
+
+    return {
+      status: '200',
+      data: {
+        fuel: tankLevel?.type === 'Number' && tankLevel?.value ? parseFloat(tankLevel.value) : null,
+        battery: batteryLevel?.type === 'Number' && batteryLevel?.value ? parseFloat(batteryLevel.value) : null,
+      },
+    };
   }
 
   /**
@@ -57,6 +104,22 @@ export default class MMApiProvider extends CarApiProvider {
    * @returns {Promise<object>} A promise that resolves with the result of the engine command.
    */
   async actionEngine(id, command) {
-    return await actionEngineService(id, command);
+    const mmResponse = await actionEngineService(id, command);
+    if (!mmResponse) return null;
+    if (mmResponse.status !== '200') return { status: mmResponse.status };
+
+    const result = mmResponse.actionResult;
+    if (!result || typeof result.status !== 'string') return { status: '500', data: null };
+
+    const status = result.status.toUpperCase();
+    let responseData;
+    if (status === 'EXECUTED') responseData = { status: 'success' };
+    else if (status === 'FAILED') responseData = { status: 'error' };
+    else responseData = null;
+
+    return {
+      status: '200',
+      data: responseData,
+    };
   }
 }

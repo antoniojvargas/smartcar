@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  smartcar:
+    platform: linux/arm64
+    command: npm run dev
+    build: .
+    ports:
+      - '3000:3000'
+    expose:
+      - '3000'
+    environment:
+      NODE_ENV: development
+    volumes:
+      - .:/app
+      - /app/node_modules

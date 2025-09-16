@@ -43,8 +43,9 @@ export function validateEngineBody(req, res, next) {
   }
 
   const { error: bodyError } = engineActionSchema.validate(req.body);
+
   if (bodyError) {
-    return next(new ValidationError(paramsError.details[0].message));
+    return next(new ValidationError(bodyError.details[0].message));
   }
 
   next();

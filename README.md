@@ -38,11 +38,11 @@ docker-compose up -d --build
 
 This will:
 
-* Build the smartcar image
+- Build the smartcar image
 
-* Start the container in development mode (nodemon)
+- Start the container in development mode (nodemon)
 
-* Expose the API on http://localhost:3000
+- Expose the API on http://localhost:3000
 
 To stop the container:
 
@@ -194,8 +194,9 @@ src/
   providers/          # External API providers (e.g. MM API integration layer)
   routes/             # Express route definitions (map endpoints to controllers)
   schemas/            # Joi schemas and validation logic
-  services/           # Business logic and data transformation (calls providers)
+  transformers/       # Transform raw API data
   utils/logger.js     # Winston logger configuration and setup
+  validators          # Validate API responses (status codes, shapes)
   app.js              # Express app setup (middleware, routes, error handling)
   server.js           # Application entry point (starts the HTTP server)
 tests/                # Unit tests

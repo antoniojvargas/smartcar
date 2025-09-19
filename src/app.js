@@ -19,6 +19,9 @@ app.use(requestLogger);
 // Swagger docs
 app.use('/api-docs', ...swaggerUiMiddleware);
 
+// Global health check
+app.get('/health', (req, res) => res.send('OK'));
+
 // Routes
 app.use('/vehicles', vehiclesRouter);
 

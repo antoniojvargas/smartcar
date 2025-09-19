@@ -69,7 +69,7 @@ router.get(
   sanitizeVehicleId,
   handleValidationErrors,
   validateVehicleParams,
-  getVehicle
+  getVehicle,
 );
 
 /**
@@ -115,7 +115,7 @@ router.get(
   sanitizeVehicleId,
   handleValidationErrors,
   validateVehicleParams,
-  getDoors
+  getDoors,
 );
 
 /**
@@ -159,7 +159,7 @@ router.get(
   sanitizeVehicleId,
   handleValidationErrors,
   validateVehicleParams,
-  getFuel
+  getFuel,
 );
 
 /**
@@ -203,7 +203,7 @@ router.get(
   sanitizeVehicleId,
   handleValidationErrors,
   validateVehicleParams,
-  getBattery
+  getBattery,
 );
 
 /**
@@ -254,7 +254,7 @@ router.post(
   sanitizeEngineAction,
   handleValidationErrors,
   validateEngineBody,
-  postEngine
+  postEngine,
 );
 
 export default router;

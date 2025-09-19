@@ -17,10 +17,10 @@ const options = {
       },
     ],
   },
-  
+
   apis: [
     path.resolve('src/routes/vehicles.js'),
-    path.resolve('src/docs/schemas.js')
+    path.resolve('src/docs/schemas.js'),
   ],
 };
 

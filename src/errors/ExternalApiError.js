@@ -23,7 +23,11 @@ export default class ExternalApiError extends AppError {
    * @param {number} [statusCode=502] - HTTP status code to return (default: 502 Bad Gateway).
    * @param {object|null} [details=null] - Optional additional details about the error.
    */
-  constructor(message = 'External API Error', statusCode = 502, details = null) {
+  constructor(
+    message = 'External API Error',
+    statusCode = 502,
+    details = null,
+  ) {
     super(message, statusCode, details);
   }
 }

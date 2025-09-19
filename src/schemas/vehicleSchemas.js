@@ -22,13 +22,10 @@ import Joi from 'joi';
  * { id: "abc" }
  */
 export const vehicleIdParamSchema = Joi.object({
-  id: Joi.string()
-    .pattern(/^\d+$/)
-    .required()
-    .messages({
-      'string.pattern.base': 'Vehicle ID must be a numeric string',
-      'any.required': 'Vehicle ID is required',
-    }),
+  id: Joi.string().pattern(/^\d+$/).required().messages({
+    'string.pattern.base': 'Vehicle ID must be a numeric string',
+    'any.required': 'Vehicle ID is required',
+  }),
 });
 
 /**
@@ -44,13 +41,10 @@ export const vehicleIdParamSchema = Joi.object({
  * { action: "RUN" }
  */
 export const engineActionSchema = Joi.object({
-  action: Joi.string()
-    .valid('START', 'STOP')
-    .required()
-    .messages({
-      'any.only': 'Action must be either START or STOP',
-      'any.required': 'Action is required',
-    }),
+  action: Joi.string().valid('START', 'STOP').required().messages({
+    'any.only': 'Action must be either START or STOP',
+    'any.required': 'Action is required',
+  }),
 });
 
 /* ─── Response Schemas ────────────────────────────── */
@@ -76,7 +70,9 @@ export const vehicleInfoResponseSchema = Joi.object({
  */
 export const doorsResponseSchema = Joi.array().items(
   Joi.object({
-    location: Joi.string().valid('frontLeft', 'frontRight', 'backLeft', 'backRight').required(),
+    location: Joi.string()
+      .valid('frontLeft', 'frontRight', 'backLeft', 'backRight')
+      .required(),
     locked: Joi.boolean().required(),
   }),
 );

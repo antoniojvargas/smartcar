@@ -1,364 +1,235 @@
-import axios from 'axios';
-import sinon from 'sinon';
-import request from 'supertest';
 import { expect } from 'chai';
-import app from '../src/app.js';
+import sinon from 'sinon';
+import { getCarApiProvider } from '../src/providers/index.js';
+import * as vehiclesController from '../src/controllers/vehiclesController.js';
 
-describe('GET /vehicles/:id', () => {
+describe('vehiclesController', () => {
+  let req, res, next, provider;
+
+  beforeEach(() => {
+    req = { params: { id: '1234' }, body: {} };
+    res = {
+      status: sinon.stub().returnsThis(),
+      json: sinon.stub(),
+    };
+    next = sinon.stub();
+
+    provider = getCarApiProvider(); // <- get the singleton instance
+  });
+
   afterEach(() => {
     sinon.restore();
   });
 
-  it('should return vehicle info in Smartcar format', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        data: {
-          vin: { value: '123123412412' },
-          color: { value: 'Metallic Silver' },
-          fourDoorSedan: { value: 'True' },
-          twoDoorCoupe: { value: 'False' },
-          driveTrain: { value: 'v8' },
-        },
-      },
+  describe('getVehicle', () => {
+    it('should return vehicle info in Smartcar format', async () => {
+      const mockData = {
+        vin: '123123412412',
+        color: 'Metallic Silver',
+        doorCount: 4,
+        driveTrain: 'v8',
+      };
+
+      sinon
+        .stub(provider, 'getVehicleInfo')
+        .resolves({ status: '200', data: mockData });
+
+      await vehiclesController.getVehicle(req, res, next);
+
+      expect(res.json.calledOnceWith(mockData)).to.be.true;
     });
 
-    const res = await request(app).get('/vehicles/1234');
+    it('should call next with NotFoundError if vehicle not found', async () => {
+      sinon
+        .stub(provider, 'getVehicleInfo')
+        .resolves({ status: '404', data: {} });
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({
-      vin: '123123412412',
-      color: 'Metallic Silver',
-      doorCount: 4,
-      driveTrain: 'v8',
+      await vehiclesController.getVehicle(req, res, next);
+
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('NotFoundError');
+    });
+
+    it('should call next with ExternalApiError on 500', async () => {
+      sinon
+        .stub(provider, 'getVehicleInfo')
+        .resolves({ status: '500', data: {} });
+
+      await vehiclesController.getVehicle(req, res, next);
+
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('ExternalApiError');
+    });
+
+    it('should call next with error if provider throws', async () => {
+      const error = new Error('Service failed');
+      sinon.stub(provider, 'getVehicleInfo').rejects(error);
+
+      await vehiclesController.getVehicle(req, res, next);
+
+      expect(next.calledOnceWith(error)).to.be.true;
     });
   });
 
-  it('should return 502 if MM API status is not 200', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '502',
-      },
+  describe('getDoors', () => {
+    it('should return door status in Smartcar format', async () => {
+      const mockDoors = [
+        { location: 'frontLeft', locked: false },
+        { location: 'frontRight', locked: true },
+      ];
+      sinon
+        .stub(provider, 'getSecurityStatus')
+        .resolves({ status: '200', data: mockDoors });
+
+      await vehiclesController.getDoors(req, res, next);
+
+      expect(res.json.calledOnceWith(mockDoors)).to.be.true;
     });
 
-    const res = await request(app).get('/vehicles/1234');
+    it('should call next with NotFoundError if vehicle not found', async () => {
+      sinon
+        .stub(provider, 'getSecurityStatus')
+        .resolves({ status: '404', data: {} });
 
-    expect(res.status).to.equal(502);
-    expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('MM API error: 502');
-    expect(res.body.details).to.equal(null);
-  });
+      await vehiclesController.getDoors(req, res, next);
 
-  it('should return 500 if critical data is missing', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        data: {
-          vin: { value: '123123412412' },
-          color: { value: 'Metallic Silver' },
-          // Missing driveTrain, door count, etc.
-        },
-      },
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('NotFoundError');
     });
 
-    const res = await request(app).get('/vehicles/1234');
-    expect(res.status).to.equal(400);
-    expect(res.body.error).to.equal('ValidationError');
-    expect(res.body.message).to.equal('Invalid response format');
+    it('should call next with ExternalApiError on 500', async () => {
+      sinon
+        .stub(provider, 'getSecurityStatus')
+        .resolves({ status: '500', data: {} });
+
+      await vehiclesController.getDoors(req, res, next);
+
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('ExternalApiError');
+    });
   });
 
-  it('should return 500 if an unexpected error occurs', async () => {
-    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
+  describe('getFuel', () => {
+    it('should return fuel level percent', async () => {
+      sinon
+        .stub(provider, 'getEnergy')
+        .resolves({ status: '200', data: { fuel: 76.5, battery: null } });
 
-    const res = await request(app).get('/vehicles/1234');
-    expect(res.status).to.equal(500);
-    expect(res.body.error).to.equal('InternalServerError');
-    expect(res.body.message).to.equal('Something went wrong');
-  });
-});
+      await vehiclesController.getFuel(req, res, next);
 
-describe('GET /vehicles/:id/doors', () => {
-  afterEach(() => {
-    sinon.restore();
-  });
-
-  it('should return door status in Smartcar format', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        data: {
-          doors: {
-            type: 'Array',
-            values: [
-              {
-                location: { type: 'String', value: 'frontLeft' },
-                locked: { type: 'Boolean', value: 'False' },
-              },
-              {
-                location: { type: 'String', value: 'frontRight' },
-                locked: { type: 'Boolean', value: 'True' },
-              },
-              {
-                location: { type: 'String', value: 'backLeft' },
-                locked: { type: 'Boolean', value: 'False' },
-              },
-              {
-                location: { type: 'String', value: 'backRight' },
-                locked: { type: 'Boolean', value: 'True' },
-              },
-            ],
-          },
-        },
-      },
+      expect(res.json.calledOnceWith({ percent: 76.5 })).to.be.true;
     });
 
-    const res = await request(app).get('/vehicles/1234/doors');
+    it('should call next with NotFoundError if vehicle not found', async () => {
+      sinon.stub(provider, 'getEnergy').resolves({ status: '404', data: {} });
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal([
-      { location: 'frontLeft', locked: false },
-      { location: 'frontRight', locked: true },
-      { location: 'backLeft', locked: false },
-      { location: 'backRight', locked: true },
-    ]);
-  });
+      await vehiclesController.getFuel(req, res, next);
 
-  it('should return 502 if MM API status is not 200', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '502',
-      },
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('NotFoundError');
     });
 
-    const res = await request(app).get('/vehicles/1234/doors');
+    it('should call next with ExternalApiError on 500', async () => {
+      sinon.stub(provider, 'getEnergy').resolves({ status: '500', data: {} });
 
-    expect(res.status).to.equal(502);
-    expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('MM API error: 502');
-    expect(res.body.details).to.equal(null);
+      await vehiclesController.getFuel(req, res, next);
+
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('ExternalApiError');
+    });
   });
 
-  it('should return 500 if doors.values is missing', async () => {
-    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
+  describe('getBattery', () => {
+    it('should return battery percent', async () => {
+      sinon
+        .stub(provider, 'getEnergy')
+        .resolves({ status: '200', data: { fuel: null, battery: 88.7 } });
 
-    const res = await request(app).get('/vehicles/1234/doors');
+      await vehiclesController.getBattery(req, res, next);
 
-    expect(res.status).to.equal(500);
-    expect(res.body.error).to.equal('InternalServerError');
-    expect(res.body.message).to.equal('Something went wrong');
-  });
-});
-
-describe('GET /vehicles/:id/fuel', () => {
-  afterEach(() => {
-    sinon.restore();
-  });
-
-  it('should return fuel level percent when MM API responds correctly', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        data: {
-          tankLevel: { type: 'Number', value: '76.5' },
-        },
-      },
+      expect(res.json.calledOnceWith({ percent: 88.7 })).to.be.true;
     });
 
-    const res = await request(app).get('/vehicles/1234/fuel');
+    it('should call next with NotFoundError if vehicle not found', async () => {
+      sinon.stub(provider, 'getEnergy').resolves({ status: '404', data: {} });
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ percent: 76.5 });
-  });
+      await vehiclesController.getBattery(req, res, next);
 
-  it('should return 502 if MM API status is not 200', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '502',
-      },
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('NotFoundError');
     });
 
-    const res = await request(app).get('/vehicles/1234/fuel');
+    it('should call next with ExternalApiError on 500', async () => {
+      sinon.stub(provider, 'getEnergy').resolves({ status: '500', data: {} });
 
-    expect(res.status).to.equal(502);
-    expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('MM API error: 502');
-    expect(res.body.details).to.equal(null);
+      await vehiclesController.getBattery(req, res, next);
+
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('ExternalApiError');
+    });
   });
 
-  it('should return 500 if an unexpected error occurs', async () => {
-    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
-
-    const res = await request(app).get('/vehicles/1234/fuel');
-
-    expect(res.status).to.equal(500);
-    expect(res.body.error).to.equal('InternalServerError');
-    expect(res.body.message).to.equal('Something went wrong');
-  });
-});
-
-describe('GET /vehicles/:id/battery', () => {
-  afterEach(() => {
-    sinon.restore();
-  });
-
-  it('should return battery percent when MM API responds correctly', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        data: {
-          batteryLevel: { type: 'Number', value: '88.7' },
-        },
-      },
+  describe('postEngine', () => {
+    beforeEach(() => {
+      req = { params: { id: '1234' }, body: { action: 'START' } };
     });
 
-    const res = await request(app).get('/vehicles/1234/battery');
+    it('should return success when MM API executes', async () => {
+      sinon
+        .stub(provider, 'actionEngine')
+        .resolves({ status: '200', data: { status: 'success' } });
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ percent: 88.7 });
-  });
+      await vehiclesController.postEngine(req, res, next);
 
-  it('should return 502 if MM API status is not 200', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '502',
-      },
+      expect(res.status.calledOnceWith(200)).to.be.true;
+      expect(res.json.calledOnceWith({ status: 'success' })).to.be.true;
     });
 
-    const res = await request(app).get('/vehicles/1234/battery');
+    it('should return 400 when MM API responds with status=error', async () => {
+      sinon
+        .stub(provider, 'actionEngine')
+        .resolves({ status: '200', data: { status: 'error' } });
 
-    expect(res.status).to.equal(502);
-    expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('MM API error: 502');
-    expect(res.body.details).to.equal(null);
-  });
+      await vehiclesController.postEngine(req, res, next);
 
-  it('should return 500 if an unexpected error occurs', async () => {
-    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
-
-    const res = await request(app).get('/vehicles/1234/battery');
-
-    expect(res.status).to.equal(500);
-    expect(res.body.error).to.equal('InternalServerError');
-    expect(res.body.message).to.equal('Something went wrong');
-  });
-});
-
-describe('POST /vehicles/:id/engine', () => {
-  afterEach(() => {
-    sinon.restore();
-  });
-
-  it('should return success when action=START and MM API executes', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        actionResult: { status: 'EXECUTED' },
-      },
+      expect(res.status.calledOnceWith(400)).to.be.true;
+      expect(
+        res.json.calledOnceWithMatch({
+          error: 'ValidationError',
+          message: 'Invalid action',
+        }),
+      ).to.be.true;
     });
 
-    const res = await request(app)
-      .post('/vehicles/1234/engine')
-      .send({ action: 'START' });
+    it('should call next with NotFoundError when MM API returns 404', async () => {
+      sinon
+        .stub(provider, 'actionEngine')
+        .resolves({ status: '404', data: {} });
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ status: 'success' });
-  });
+      await vehiclesController.postEngine(req, res, next);
 
-  it('should return success when action=STOP and MM API executes', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        actionResult: { status: 'EXECUTED' },
-      },
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('NotFoundError');
     });
 
-    const res = await request(app)
-      .post('/vehicles/1234/engine')
-      .send({ action: 'STOP' });
+    it('should call next with ExternalApiError when MM API returns 500', async () => {
+      sinon
+        .stub(provider, 'actionEngine')
+        .resolves({ status: '500', data: {} });
 
-    expect(res.status).to.equal(200);
-    expect(res.body).to.deep.equal({ status: 'success' });
-  });
+      await vehiclesController.postEngine(req, res, next);
 
-  it('should return an error if action is invalid', async () => {
-    const res = await request(app)
-      .post('/vehicles/1234/engine')
-      .send({ action: 'INVALID' });
-
-    expect(res.status).to.equal(400);
-    expect(res.body.error).to.equal('ValidationError');
-    expect(res.body.message).to.equal('Action must be either START or STOP');
-  });
-
-  it('should return 502 if MM API returns null', async () => {
-    sinon.stub(axios, 'post').resolves({ data: null });
-
-    const res = await request(app)
-      .post('/vehicles/1234/engine')
-      .send({ action: 'START' });
-
-    expect(res.status).to.equal(502);
-    expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('No response from MM API');
-    expect(res.body.details).to.equal(null);
-  });
-
-  it('should return 502 if MM API returns non-200 status', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: { status: '502' },
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('ExternalApiError');
     });
 
-    const res = await request(app)
-      .post('/vehicles/1234/engine')
-      .send({ action: 'START' });
+    it('should call next with ValidationError on invalid action', async () => {
+      req.body.action = 'INVALID';
 
-    expect(res.status).to.equal(502);
-    expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('MM API error: 502');
-    expect(res.body.details).to.equal(null);
-  });
+      await vehiclesController.postEngine(req, res, next);
 
-  it('should return 502 if MM API response is malformed (no actionResult)', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: { status: '200' },
+      expect(next.calledOnce).to.be.true;
+      expect(next.firstCall.args[0].name).to.equal('ValidationError');
     });
-
-    const res = await request(app)
-      .post('/vehicles/1234/engine')
-      .send({ action: 'START' });
-
-    expect(res.status).to.equal(502);
-    expect(res.body.error).to.equal('ExternalApiError');
-    expect(res.body.message).to.equal('MM API error: 500');
-    expect(res.body.details).to.equal(null);
-  });
-
-  it('should return error when MM API status=FAILED', async () => {
-    sinon.stub(axios, 'post').resolves({
-      data: {
-        status: '200',
-        actionResult: { status: 'FAILED' },
-      },
-    });
-
-    const res = await request(app)
-      .post('/vehicles/1234/engine')
-      .send({ action: 'START' });
-
-    expect(res.status).to.equal(400);
-    expect(res.body.error).to.equal('ValidationError');
-    expect(res.body.message).to.equal('Invalid action');
-  });
-
-  it('should return 500 for unexpected MM API status', async () => {
-    sinon.stub(axios, 'post').throws(new Error('Something went wrong'));
-
-    const res = await request(app)
-      .post('/vehicles/1234/engine')
-      .send({ action: 'START' });
-
-    expect(res.status).to.equal(500);
-    expect(res.body.error).to.equal('InternalServerError');
-    expect(res.body.message).to.equal('Something went wrong');
   });
 });

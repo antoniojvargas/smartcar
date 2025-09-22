@@ -187,10 +187,10 @@ This interactive documentation is automatically generated from the openapi.yml s
 
 ```bash
 src/
-  controllers/        # Route controllers (handle incoming HTTP requests and responses)
   doc/                # API documentation files (e.g. OpenAPI/Swagger specs, markdown docs)
   errors/             # Custom error classes (ValidationError, NotFoundError, etc.)
   middleware/         # Express middleware (validation, sanitization, logging, etc.)
+  MMApi/
   providers/          # External API providers (e.g. MM API integration layer)
   routes/             # Express route definitions (map endpoints to controllers)
   schemas/            # Joi schemas and validation logic

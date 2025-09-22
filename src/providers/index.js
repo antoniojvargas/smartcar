@@ -1,4 +1,4 @@
-import MMApiProvider from './MMApiProvider.js';
+import MMApiProvider from '../MMApi/MMApiProvider.js';
 
 let providerInstance = null;
 
@@ -8,3 +8,4 @@ export function getCarApiProvider() {
   }
   return providerInstance;
 }
+

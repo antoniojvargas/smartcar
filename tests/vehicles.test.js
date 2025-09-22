@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { getCarApiProvider } from '../src/providers/index.js';
-import * as vehiclesController from '../src/controllers/vehiclesController.js';
+import * as vehiclesController from '../src/MMApi/MMApiController.js';
 
 describe('vehiclesController', () => {
   let req, res, next, provider;
@@ -192,11 +192,11 @@ describe('vehiclesController', () => {
 
       await vehiclesController.postEngine(req, res, next);
 
-      expect(res.status.calledOnceWith(400)).to.be.true;
+      expect(res.status.calledOnceWith(403)).to.be.true;
       expect(
         res.json.calledOnceWithMatch({
-          error: 'ValidationError',
-          message: 'Invalid action',
+          error: 'Method Not Allowed',
+          message: "Can't start an already started engine",
         }),
       ).to.be.true;
     });

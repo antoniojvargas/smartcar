@@ -1,4 +1,8 @@
 import { getCarApiProvider } from '../providers/index.js';
+import ValidationError from '../errors/ValidationError.js';
+import ExternalApiError from '../errors/ExternalApiError.js';
+import NotFoundError from '../errors/NotFoundError.js';
+import logger from '../utils/logger.js';
 import {
   vehicleInfoResponseSchema,
   doorsResponseSchema,
@@ -7,10 +11,6 @@ import {
   engineResponseSchema,
 } from '../schemas/vehicleSchemas.js';
 import { validateResponse } from '../middleware/validateResponse.js';
-import ValidationError from '../errors/ValidationError.js';
-import ExternalApiError from '../errors/ExternalApiError.js';
-import NotFoundError from '../errors/NotFoundError.js';
-import logger from '../utils/logger.js';
 
 const carApiProvider = getCarApiProvider();
 
@@ -134,16 +134,20 @@ export async function getFuel(req, res, next) {
 
     if (result.data.fuel === null) {
       responseData = {
-        message:
-          'Fuel level information is not available for electric vehicles.',
+        error: 'Method Not Allowed',
+        message: 'Fuel level information is not available for electric vehicles.',
+        requestId: req.requestId,
       };
-    } else {
-      responseData = { percent: result.data.fuel };
+
+      validateResponse(fuelResponseSchema, responseData, req);
+      return res.status(403).json(responseData);
     }
+
+    responseData = { percent: result.data.fuel };
 
     validateResponse(fuelResponseSchema, responseData, req);
 
-    res.json(responseData);
+    return res.status(200).json(responseData);
   } catch (error) {
     logger.error(`Unexpected error in getFuel: ${error.message}`, {
       requestId: req.requestId,
@@ -182,18 +186,23 @@ export async function getBattery(req, res, next) {
 
     // result.data.battery should be a number or null
     let responseData;
+
     if (result.data.battery === null) {
       responseData = {
-        message:
-          'Battery level information is not available for fuel vehicles.',
+        error: 'Method Not Allowed',
+        message: 'Battery level information is not available for fuel vehicles.',
+        requestId: req.requestId,
       };
-    } else {
-      responseData = { percent: result.data.battery };
+
+      validateResponse(batteryResponseSchema, responseData, req);
+      return res.status(403).json(responseData);
     }
+
+    responseData = { percent: result.data.battery };
 
     validateResponse(batteryResponseSchema, responseData, req);
 
-    res.json(responseData);
+    return res.status(200).json(responseData);
   } catch (error) {
     logger.error(`Unexpected error in getBattery: ${error.message}`, {
       requestId: req.requestId,
@@ -246,13 +255,32 @@ export async function postEngine(req, res, next) {
 
     if (result.data.status === 'success') {
       return res.status(200).json(result.data);
-    } else {
-      return res.status(400).json({
-        error: 'ValidationError',
-        message: 'Invalid action',
-        requestId: req.requestId,
-      });
     }
+
+    // Handle special error cases
+    if (result.data.status === 'error') {
+      if (normalizedAction === 'START') {
+        return res.status(403).json({
+          error: 'Method Not Allowed',
+          message: "Can't start an already started engine",
+          requestId: req.requestId,
+        });
+      }
+      if (normalizedAction === 'STOP') {
+        return res.status(403).json({
+          error: 'Method Not Allowed',
+          message: "Can't stop an already stopped engine",
+          requestId: req.requestId,
+        });
+      }
+    }
+
+    // Fallback generic error response
+    return res.status(400).json({
+      error: 'ValidationError',
+      message: 'Invalid action',
+      requestId: req.requestId,
+    });
   } catch (error) {
     logger.error(`Unexpected error in postEngine: ${error.message}`, {
       requestId: req.requestId,
